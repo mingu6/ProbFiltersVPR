@@ -1,10 +1,10 @@
 import numpy as np
+
 from scipy.spatial.transform import Rotation
+import matplotlib.pyplot as plt
 
 from src import geometry
-from src.models import params
-
-import matplotlib.pyplot as plt
+import params
 
 deg = np.pi / 180
 

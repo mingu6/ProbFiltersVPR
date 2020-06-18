@@ -1,31 +1,7 @@
 import numpy as np
 import math
-from numba import njit, prange
 
 from scipy.spatial.transform import Rotation
-
-# def invert_SE3(T):
-#     """
-#     Args:
-#         T (np array Nx4x4): Array where each element is a 4x4 SE(3) transformation.
-#     Returns:
-#         T_inv (np array Nx4x4): corresponding inverse transformations of input as 
-#                     4x4 SE(3) elements.
-#     """
-#     R = T[..., :3, :3]
-#     t = T[..., :3, 3]
-
-#     # compute R and t of inverse matrix
-#     R_inv = R.transpose(0, 2, 1)
-#     t_inv = np.zeros((len(T), 3))
-#     t_inv = -R_inv @ t[:, :, np.newaxis]
-
-#     lastrow = np.repeat(np.array([[0., 0., 0., 1.]]), len(T), axis=0)
-#     # combine translation and rotation
-#     T_inv = np.append(R_inv, t_inv, axis=2)
-#     # add bottom row to make matrix 4x4 for SE(3) parameterization
-#     T_inv = np.append(T_inv, lastrow[:, np.newaxis, :], axis=1)
-#     return T_inv
 
 class SE3Poses:
     def __init__(self, t, R):
@@ -245,49 +221,3 @@ def vOp(mat):
     vec[..., 1] = mat[..., 0, 2]
     vec[..., 2] = mat[..., 1, 0]
     return vec
-
-@njit(parallel=True, cache=True)
-def fast_dot(A1, A2):
-    """
-    For two m x n matrices, compute dot products between each of the rows.
-    Returns length m vector consisting of row-wise dot products.
-
-    """
-    M = A1.shape[0]
-    D = A1.shape[1]
-    dots = np.empty(M)
-    for i in prange(M):
-        dot = 0.0
-        for j in range(D):
-            dot += A1[i, j] * A2[i, j]
-        dots[i] = dot
-    return dots
-
-@njit(parallel=True, cache=True)
-def fast_distance(A1, A2):
-    M = A1.shape[0]
-    D = A1.shape[1]
-    dists = np.empty(M)
-    for i in prange(M):
-        sum_sq = 0.
-        for j in range(D):
-            tmp = (A1[i, j] - A2[i, j]) 
-            sum_sq += tmp * tmp
-        dists[i] = np.sqrt(sum_sq)
-    return dists
-
-@njit(parallel=True, cache=True)
-def fast_distance_pairwise(A1, A2):
-    dists = np.empty((len(A1), len(A2)))
-    M = A1.shape[0]
-    N = A2.shape[0]
-    D = A1.shape[1]
-    for i in prange(len(A1)):
-        for j in range(len(A2)):
-            # dists[i, j] = np.linalg.norm(A1[i] - A2[j])
-            sum_sq = 0.
-            for k in range(D):
-                tmp = (A1[i, k] - A2[j, k]) 
-                sum_sq += tmp * tmp
-            dists[i, j] = np.sqrt(sum_sq)
-    return dists

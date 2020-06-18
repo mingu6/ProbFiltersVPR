@@ -7,10 +7,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import trange, tqdm
 
+import params
+from ParticleFilter import ParticleFilter
 from src import geometry, utils
-from src.models import params
-from src.models.ParticleFilter import ParticleFilter
-from thirdparty.nigh.Nigh import SE3Tree
+import src
+from src.thirdparty.nigh import Nigh
 
 def localize_traverses(reference, query, desc, nparticles, lambda2, kp, delta, w, 
         aux=False, odom_only=False, gt_motion=False):
@@ -24,7 +25,7 @@ def localize_traverses(reference, query, desc, nparticles, lambda2, kp, delta, w
     times = []
 
     # NN search tree for poses
-    poses_tree = SE3Tree(2 * w)
+    poses_tree = Nigh.SE3Tree(2 * w)
     poses_tree.insert(ref_gt.t(), ref_gt.R().as_quat())
 
     nloc = len(vo) # number of localizations

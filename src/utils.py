@@ -2,13 +2,15 @@ import os
 import pickle
 import numpy as np
 
-from src.models import params
+from . import params
 
 ################## filepaths ###################
-file_dir = os.path.dirname(os.path.abspath(__file__))
-raw_path = os.path.abspath(os.path.join(file_dir, "../", "data/raw/RobotCar/"))
-processed_path = os.path.abspath(os.path.join(file_dir, "../", "data/processed/RobotCar/"))
-save_path = os.path.abspath(os.path.join(file_dir, "../", "results"))
+curr_path = os.path.dirname(os.path.realpath(__file__))
+raw_path = "/home/ming/data/raw/RobotCar/"
+processed_path = "/home/ming/data/processed/RobotCar/"
+reference_path = os.path.abspath(os.path.join(curr_path, "..", "data/reference"))
+query_path = os.path.abspath(os.path.join(curr_path, "..", "data/query"))
+results_path = os.path.abspath(os.path.join(curr_path, "..", "results"))
 ################################################
 
 def save_obj(savepath, **components):
@@ -16,6 +18,37 @@ def save_obj(savepath, **components):
         pickle.dump(components, f)
     return save_obj
         
+def load_traverse_data(name):
+    """
+    Helper function to load processed traverse data from disk for a given
+    traverse and descriptor combo for the purpose of constructing the reference traverse.
+    """
+    # import timestamps
+    tstamps_dir = os.path.join(processed_path, params.traverses[name], "stereo_tstamps.npy")
+    tstamps = np.load(tstamps_dir)
+
+    # import RTK GPS poses for images
+    rtk_dir = os.path.join(processed_path, params.traverses[name], "rtk/stereo/left/rtk.pickle")
+    with open(rtk_dir, 'rb') as f:
+        rtk = pickle.load(f)
+    rtk_poses = rtk['rtk'] 
+
+    # import VO
+    vo_dir = os.path.join(processed_path, params.traverses[name], "vo/vo.pickle")
+    with open(vo_dir, 'rb') as f:
+        vo = pickle.load(f)
+    vo_cumulative = vo['cumulative'] 
+
+    # import all available image descriptors
+    descriptors_dir = os.path.join(processed_path, params.traverses[name], "stereo/left/")
+    descriptors = {}
+    for fname in os.listdir(descriptors_dir):
+        if fname.endswith('.npy'):
+            descriptorName = fname[:-4]
+            descriptorMat = np.load(os.path.join(descriptors_dir, fname))
+            descriptors[descriptorName] = descriptorMat
+    return rtk_poses, vo_cumulative, descriptors, tstamps
+
 def import_traverses(ref_name, query_name, descriptor, gt_motion=False):
     # load full processed traverse
     ref_path = os.path.join(processed_path, ref_name)
@@ -23,7 +56,7 @@ def import_traverses(ref_name, query_name, descriptor, gt_motion=False):
 
     # import full processed traverses, subsample for map and query
     with open(ref_path + '/rtk/rtk.pickle', 'rb') as f:
-        ref_gt_full = pickle.load(f)['poses']
+        ref_gt_full =  pickle.load(f)['poses']
     ref_descriptors_full = np.load(ref_path + '/stereo/left/{}.npz'.format(descriptor))['arr_0']
     query_descriptors = np.load(query_path + '/stereo/left/{}.npz'.format(descriptor))['arr_0']
 
