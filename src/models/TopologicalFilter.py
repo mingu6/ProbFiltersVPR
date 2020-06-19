@@ -10,8 +10,7 @@ import matplotlib.pyplot as plt
 from src import geometry, utils
 
 class TopologicalFilter:
-    def __init__(self, delta, map_poses, map_descriptors, query_descriptors_0,
-                    window_lower=-2, window_upper=10):
+    def __init__(self, map_poses, map_descriptors, delta, window_lower=-2, window_upper=10):
         # store map data
         self.map_poses = map_poses
         self.map_descriptors = map_descriptors
@@ -19,14 +18,13 @@ class TopologicalFilter:
         self.delta = delta
         self.lambda1 = 0.0
         self.belief = None
-        self.init_parameters(query_descriptors_0)
         # parameters for prior transition matrix
         self.window_lower = window_lower
         self.window_upper = window_upper
         self.window_size = int((window_upper - window_lower) / 2)
         self.transition = np.ones(window_upper - window_lower)
 
-    def init_parameters(self, descriptor):
+    def initialize_model(self, descriptor):
         dists = np.linalg.norm(self.map_descriptors - descriptor[np.newaxis, :], axis=1)
         descriptor_quantiles = np.quantile(dists, [0.025, 0.975])
         self.lambda1 = np.log(self.delta) / (descriptor_quantiles[1] - descriptor_quantiles[0])
@@ -56,86 +54,47 @@ class TopologicalFilter:
         max_bel = np.argmax(self.belief)
         nhood_inds = np.arange(max(max_bel - 2 * self.window_size, 0), min(max_bel + 2 * self.window_size, len(self.belief) - 1))
         score = np.sum(self.belief[nhood_inds]) 
-        proposal = int(np.rint(np.average(nhood_inds, weights=self.belief[nhood_inds])))
+        proposal = self.map_poses[int(np.rint(np.average(nhood_inds, weights=self.belief[nhood_inds])))]
         return proposal, score
 
-def localize_traverses(reference, query, desc, delta, w_l, w_u, verbose=False):
-    ref_gt, ref_descriptors, _, query_gt, _, query_descriptors, _, _, _\
-        = utils.import_traverses(reference, query, desc)
-    # experiment parameters
-    nloc = len(query_gt)
-    L = len(query_gt[0])
-    # store model output
-    proposals = []
-    scores = []
-    times = []
-    for i in trange(nloc, desc='Topological', leave=False):
-        scores_seq = np.zeros(L)
-        proposals_seq = []
-        times_seq = np.zeros(L)
-
-        start = time.time() # start timing
-        model = TopologicalFilter(args.delta, ref_gt, ref_descriptors, query_descriptors[i, 0, :], 
-                window_lower=args.window_lower, window_upper=args.window_upper)
-        if verbose:
-            localized = False
-        for t in range(L):
-            if t > 0:
-                model.update(query_descriptors[i, t, :])
-            # save output for iteration
-            proposal, score = model.localize()
-            proposals_seq.append(proposal)
-            scores_seq[t] = score
-            times_seq[t] = time.time() - start
-            if verbose:
-                rel = ref_gt[int(proposal)].inv() * query_gt[i][t]
-                if score > 0.95 and not localized:
-                    print("loc: ", i, "t: ", t, "t dist:", np.linalg.norm(rel.t()), 'R dist', rel.R().magnitude() * 180 / 3.1415, "score:", score)
-                    localized = True
-        proposals.append(ref_gt[np.asarray(proposals_seq, dtype=int)])
-        scores.append(scores_seq)
-        times.append(times_seq)
-    return proposals, scores, times, query_gt
-
-def save_results(reference, query, proposals, scores, times, query_gt):
-    save_path_query = os.path.join(utils.save_path, query)
-    if not os.path.exists(save_path_query):
-        os.makedirs(save_path_query)
-    savefile = save_path_query + '/Topological.pickle'
-    name = "Topological Filter"
-    utils.save_obj(savefile, model=name, reference=reference, query=query, query_gt=query_gt, 
-                                   proposals=proposals, scores=scores, times=times)
-
 def main(args):
-    if not args.All:
-        proposals, scores, times, query_gt = localize_traverses(args.reference_traverse, args.query_traverse, args.descriptor, 
-                            args.delta, args.window_lower, args.window_upper, verbose=args.verbose)
-        save_results(args.reference_traverse, args.query_traverse, proposals, scores, times, query_gt)
-    else:
-        traverses = ['Rain', 'Night', 'Dusk']
-        pbar = tqdm(traverses)
-        for traverse in pbar:
-            pbar.set_description(traverse)
-            proposals, scores, times, query_gt = localize_traverses(args.reference_traverse, traverse, args.descriptor, 
-                                args.delta, args.window_lower, args.window_upper)
-            save_results(args.reference_traverse, traverse, proposals, scores, times, query_gt)
+    # load reference data
+    ref_poses, ref_descriptors, _ = utils.import_reference_map(args.reference_traverse)
+    # localize all selected query traverses
+    pbar = tqdm(args.query_traverses)
+    for traverse in pbar:
+        pbar.set_description(traverse)
+        # savepath
+        save_path = os.path.join(utils.results_path, traverse)
+        # load query data
+        query_poses, _, _, query_descriptors, _ = utils.import_query_traverse(traverse)
+        # regular traverse with VO
+        pbar = tqdm(args.descriptors, leave=False)
+        for desc in pbar:
+            pbar.set_description(desc)
+            save_path1 = os.path.join(save_path, desc) # one folder per descriptor
+            if not os.path.exists(save_path1): 
+                os.makedirs(save_path1)
+            model = TopologicalFilter(ref_poses, ref_descriptors[desc], args.delta, window_lower=args.window_lower, window_upper=args.window_upper)
+            proposals, scores, times = utils.localize_traverses_filter(model, query_descriptors[desc], vo=None, desc='Topological')
+            utils.save_obj(save_path1 + '/Topological.pickle', model='Topological', reference=args.reference_traverse, query=traverse, query_gt=query_poses, 
+                                            proposals=proposals, scores=scores, times=times)
     return None
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run topological filter trials")
-    parser.add_argument('-r', '--reference-traverse', type=str, default='2015-03-17-11-08-44',
-                        help="reference traverse used to build map")
-    parser.add_argument('-q', '--query-traverse', type=str, default='Night', choices=['Rain', 'Dusk', 'Night'],
-                        help="query traverse to localize against reference map")
+    parser = argparse.ArgumentParser(description="Run topological filter on trials")
+    parser.add_argument('-r', '--reference-traverse', type=str, default='Overcast',
+                        help="reference traverse used as the map")
+    parser.add_argument('-q', '--query-traverses', nargs='+', type=str, default=['Rain', 'Dusk', 'Night'],
+                        help="Names of query traverses to localize against reference map e.g. Overcast, Night, Dusk etc. \
+                            Input 'all' instead to process all traverses. See src/params.py for full list.")
+    parser.add_argument('-d', '--descriptors', nargs='+', type=str, default=['NetVLAD', 'DenseVLAD'], help='descriptor types to run experiments on.')
     parser.add_argument('-D', '--delta', type=float, default=10, 
         help="multiple used for calibrating sensor update rate parameter. Assumes 6sigma change in image difference causes M times sensor update")
     parser.add_argument('-wl', '--window-lower', type=int, default=-2, 
         help="minimum state transition in transition matrix")
     parser.add_argument('-wu', '--window-upper', type=int, default=10, 
         help="maximum state transition in transition matrix")
-    parser.add_argument('--descriptor', type=str, default='NetVLAD', choices=['NetVLAD', 'DenseVLAD'], help='type of descriptor to use. options: NetVLAD')
-    parser.add_argument('-v', '--verbose', action='store_true', help='verbose')
-    parser.add_argument('-A', '--All', action='store_true', help='run all configurations required to generate results')
     args = parser.parse_args()
 
     main(args)

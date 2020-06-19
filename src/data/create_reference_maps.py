@@ -39,7 +39,7 @@ def build_reference_keyframes(gt, threshold, attitude_weight):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=
             "Extract reference map keyframes as indices from processed raw traverses")
-    parser.add_argument('-t', '--traverses', nargs='+', type=str, default=['all'],
+    parser.add_argument('-t', '--traverses', nargs='+', type=str, default=['Overcast'],
                         help="Names of traverses to process, e.g. Overcast, Night, Dusk etc. \
                             Input 'all' instead to process all traverses. See src/params.py for full list.")
     parser.add_argument('-w', '--attitude-weight', type=float, default=20, 
@@ -62,14 +62,15 @@ if __name__ == "__main__":
         rtk_ref = rtk_poses[indices]
         tstamps_ref = tstamps[indices]
         # save all to disk
-        rtkpath = os.path.join(utils.reference_path, params.traverses[name], 'rtk/stereo/left')
+        basepath = os.path.join(utils.reference_path, params.traverses[name])
+        rtkpath = os.path.join(basepath, 'rtk/stereo/left')
         if not os.path.exists(rtkpath): 
             os.makedirs(rtkpath)
-        descriptor_path = os.path.join(utils.reference_path, params.traverses[name], 'descriptors/stereo/left') 
-        if not os.path.exists(descriptor_path): 
-            os.makedirs(descriptor_path)
-        np.save(rtkpath + '/stereo_tstamps.npy', tstamps_ref)
+        descriptorpath = os.path.join(basepath, 'descriptors/stereo/left') 
+        if not os.path.exists(descriptorpath): 
+            os.makedirs(descriptorpath)
+        np.save(basepath + '/stereo_tstamps.npy', tstamps_ref)
         utils.save_obj(rtkpath + "/rtk.pickle", rtk=rtk_ref)
         for name, mat in descriptors.items():
             mat_ref = mat[indices]
-            np.save(descriptor_path + '/{}.npy'.format(name), mat_ref)
+            np.save(descriptorpath + '/{}.npy'.format(name), mat_ref)

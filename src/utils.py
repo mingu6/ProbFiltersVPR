@@ -1,8 +1,11 @@
 import os
 import pickle
-import numpy as np
+import time
 
-from . import params
+import numpy as np
+from tqdm import tqdm, trange
+
+from . import params, geometry
 
 ################## filepaths ###################
 curr_path = os.path.dirname(os.path.realpath(__file__))
@@ -30,14 +33,12 @@ def load_traverse_data(name):
     # import RTK GPS poses for images
     rtk_dir = os.path.join(processed_path, params.traverses[name], "rtk/stereo/left/rtk.pickle")
     with open(rtk_dir, 'rb') as f:
-        rtk = pickle.load(f)
-    rtk_poses = rtk['rtk'] 
+        rtk_poses = pickle.load(f)['rtk']
 
     # import VO
     vo_dir = os.path.join(processed_path, params.traverses[name], "vo/vo.pickle")
     with open(vo_dir, 'rb') as f:
-        vo = pickle.load(f)
-    vo_cumulative = vo['cumulative'] 
+        vo_cumulative = pickle.load(f)['cumulative']
 
     # import all available image descriptors
     descriptors_dir = os.path.join(processed_path, params.traverses[name], "stereo/left/")
@@ -49,41 +50,88 @@ def load_traverse_data(name):
             descriptors[descriptorName] = descriptorMat
     return rtk_poses, vo_cumulative, descriptors, tstamps
 
-def import_traverses(ref_name, query_name, descriptor, gt_motion=False):
-    # load full processed traverse
-    ref_path = os.path.join(processed_path, ref_name)
-    query_path = os.path.join(processed_path, params.queries[query_name])
+def import_query_traverse(name):
+    # import timestamps
+    base_dir = os.path.join(query_path, params.traverses[name])
+    tstamps = np.load(base_dir + "/stereo_tstamps.npy")
+    # import RTK GPS poses for images
+    rtk_dir = os.path.join(base_dir, "rtk/stereo/left/rtk.pickle")
+    with open(rtk_dir, 'rb') as f:
+        rtk_poses = pickle.load(f)['rtk']
+    # import VO and RTK motion
+    with open(base_dir +'/vo.pickle', 'rb') as f:
+        vo = pickle.load(f)['odom']
+    with open(base_dir + '/rtk_motion.pickle', 'rb') as f:
+        rtk_motion = pickle.load(f)['odom']
+    # import all available image descriptors
+    descriptors_dir = os.path.join(query_path, params.traverses[name], "descriptors/stereo/left/")
+    descriptors = {}
+    for fname in os.listdir(descriptors_dir):
+        if fname.endswith('.npy'):
+            descriptorName = fname[:-4]
+            descriptorMat = np.load(os.path.join(descriptors_dir, fname))
+            descriptors[descriptorName] = descriptorMat
+    return rtk_poses, vo, rtk_motion, descriptors, tstamps
 
-    # import full processed traverses, subsample for map and query
-    with open(ref_path + '/rtk/rtk.pickle', 'rb') as f:
-        ref_gt_full =  pickle.load(f)['poses']
-    ref_descriptors_full = np.load(ref_path + '/stereo/left/{}.npz'.format(descriptor))['arr_0']
-    query_descriptors = np.load(query_path + '/stereo/left/{}.npz'.format(descriptor))['arr_0']
+def import_reference_map(name):
+    # import timestamps
+    tstamps_dir = os.path.join(reference_path, params.traverses[name], "stereo_tstamps.npy")
+    tstamps = np.load(tstamps_dir)
+    # import RTK GPS poses for images
+    rtk_dir = os.path.join(reference_path, params.traverses[name], "rtk/stereo/left/rtk.pickle")
+    with open(rtk_dir, 'rb') as f:
+        rtk = pickle.load(f)
+    rtk_poses = rtk['rtk'] 
+    # import all available image descriptors
+    descriptors_dir = os.path.join(reference_path, params.traverses[name], "descriptors/stereo/left/")
+    descriptors = {}
+    for fname in os.listdir(descriptors_dir):
+        if fname.endswith('.npy'):
+            descriptorName = fname[:-4]
+            descriptorMat = np.load(os.path.join(descriptors_dir, fname))
+            descriptors[descriptorName] = descriptorMat
+    return rtk_poses, descriptors, tstamps
 
-    # load reference and query indices
-    with open(query_path + '/query/traverses.pickle', 'rb') as f:
-        query = pickle.load(f)
-    with open(query_path + '/rtk/rtk.pickle', 'rb') as f:
-        query_gt_full = pickle.load(f)['poses']
-    query_traverse_ind = query['indices']
-    query_gt = [query_gt_full[ind] for ind in query_traverse_ind]
-    # load query odometry
-    if gt_motion:
-        query_vo = query["gt_motion"]
-    else:
-        query_vo = query["vo"]
-    w = query['w']
-    # load query ground truth poses
-    query_tstamps = np.load(query_path + '/tstamps.npy')
-    traverses_tstamps = query_tstamps[query_traverse_ind]
-    traverses_descriptors = query_descriptors[query_traverse_ind]
-    # import reference traverses
-    with open(ref_path + '/reference/indices.pickle', 'rb') as f:
-        reference = pickle.load(f)
-    ref_kf_ind = reference["indices"]
-    ref_gt = ref_gt_full[ref_kf_ind]
-    ref_descriptors = ref_descriptors_full[ref_kf_ind]
-    ref_tstamps_full = np.load(ref_path + '/tstamps.npy')
-    ref_tstamps = ref_tstamps_full[ref_kf_ind]
-    
-    return ref_gt, ref_descriptors, query_traverse_ind, query_gt, query_vo, traverses_descriptors, ref_tstamps, traverses_tstamps, w
+def localize_traverses_filter(model, query_descriptors, vo=None, desc=None):
+    nloc = len(query_descriptors) # number of localizations
+    L = len(query_descriptors[0]) # max sequence length
+    # localize trials!
+    proposals, scores, times = [], [], []
+    for i in trange(nloc, desc=desc, leave=False):
+        # save outputs of model
+        proposals_seq = []
+        score_seq = np.empty(L)
+        times_seq = np.empty(L)
+        
+        start = time.time() # begin timing localization
+        model.initialize_model(query_descriptors[i, 0, :])
+        for t in range(L):
+            if t > 0:
+                if vo:
+                    model.update(vo[i][t-1], query_descriptors[i, t, :])
+                else:
+                    model.update(query_descriptors[i, t, :])
+            proposal, score = model.localize()
+            # save particle and proposal info for evaluation/visualization for sequence
+            proposals_seq.append(proposal)
+            score_seq[t] = score
+            times_seq[t] = time.time() - start
+            # check results
+        proposals_seq = geometry.combine(proposals_seq)
+        # save traverse statistics
+        proposals.append(proposals_seq)
+        scores.append(score_seq)
+        times.append(times_seq)
+    return proposals, scores, times
+
+def localize_traverses_matching(model, query_descriptors, desc=None):
+    nloc = len(query_descriptors) # number of localizations
+    # localize trials!
+    proposals, scores, times = [], [], []
+    for i in trange(nloc, desc=desc, leave=False):
+        start = time.time() # begin timing localization
+        proposal, score = model.localize(query_descriptors[i])
+        times.append(time.time() - start)
+        proposals.append(proposal)
+        scores.append(score)
+    return proposals, scores, times

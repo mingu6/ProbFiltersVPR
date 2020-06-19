@@ -13,5 +13,9 @@ setup(
         'src/data/interpolate_raw_data.py',
         'src/data/create_reference_maps.py',
         'src/data/create_query_traverses.py',
+        'src/models/ParticleFilter.py',
+        'src/models/TopologicalFilter.py',
+        'src/models/SeqSLAM.py',
+        'src/models/SingleImageMatching.py'
     ]
 )

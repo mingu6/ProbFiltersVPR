@@ -1,24 +1,26 @@
-import numpy as np
+import os
+import argparse
+import pickle
+import time
 
+import numpy as np
 from scipy.spatial.transform import Rotation
 import matplotlib.pyplot as plt
+from tqdm import trange, tqdm
 
-from src import geometry
-import params
-
-deg = np.pi / 180
-
+from src import geometry, utils, params
+from src.thirdparty.nigh import Nigh
 class ParticleFilter:
-    def __init__(self, traverse, n_particles, lambda2, k_pose, delta, w, poses_tree, map_poses, map_descriptors, query_descriptor_0,
-                    auxiliary=False, odom_only=False):
+    def __init__(self, poses_tree, map_poses, map_descriptors, n_particles, lambda2, k_pose, delta, w,
+                    sigma_init, sigma_vo, auxiliary=False, odom_only=False):
         # model parameters
-        self.traverse = traverse
         self.lambda1 = 0.
         self.lambda2 = lambda2
-        # self.pose_bw = 4
         self.k_pose = k_pose
         self.delta = delta
         self.w = w
+        self.sigma_init = sigma_init
+        self.sigma_vo = sigma_vo
         # map keyframe information
         if len(map_poses) != len(map_descriptors):
             raise ValueError("Number of poses and descriptors not the same!")
@@ -32,8 +34,6 @@ class ParticleFilter:
         # model type
         self.auxiliary = auxiliary
         self.odom_only = odom_only
-        # initialize model
-        self.initialize_model(query_descriptor_0)
 
     def initialize_model(self, query_descriptor):
         dists = np.linalg.norm(query_descriptor[np.newaxis, :] - self.descriptors, axis=1)
@@ -42,8 +42,8 @@ class ParticleFilter:
         self.lambda1 = np.log(self.delta) / (descriptor_quantiles[1] - descriptor_quantiles[0])
         # initialize particles 
         sims = np.exp(- self.lambda1 * dists)
-        map_idx = np.minimum(self._resample_stratified(sims), len(self.map_poses) - 1) # resample map indices
-        particles_noise = np.random.normal(scale=params.sigma_init[np.newaxis, :], size=(self.n_particles, 6)) 
+        map_idx = np.minimum(self._resample_systematic(sims), len(self.map_poses) - 1) # resample map indices
+        particles_noise = np.random.normal(scale=self.sigma_init[np.newaxis, :], size=(self.n_particles, 6)) 
         self.particles = self.map_poses[map_idx] * geometry.expSE3(particles_noise)
         self.weights = np.ones(shape=self.n_particles) / self.n_particles
 
@@ -67,7 +67,7 @@ class ParticleFilter:
 
     def apply_motion(self, vo, noise=True):
         ##### fixed parameters #####
-        sigma = params.sigma_vo[self.traverse]
+        sigma = self.sigma_vo
         ############################
         # add noise to raw vo output if required
         vo_noisy = vo
@@ -93,13 +93,13 @@ class ParticleFilter:
 
     def resample_particles(self, weights):
         if self.auxiliary:
-            resample_idx = self._resample_stratified(weights)
+            resample_idx = self._resample_systematic(weights)
             self.particles = self.particles[resample_idx]
             self.weights = np.ones(self.n_particles) / self.n_particles
         else:
             ESS = np.sum(weights ** 2) ** -1
             if ESS < self.n_particles * 0.5:
-                resample_idx = self._resample_stratified(weights)
+                resample_idx = self._resample_systematic(weights)
                 self.particles = self.particles[resample_idx]
                 self.weights = np.ones(self.n_particles) / self.n_particles
 
@@ -116,7 +116,7 @@ class ParticleFilter:
         self.weights *= update
         self.weights /= self.weights.sum()
 
-    def _resample_stratified(self, weights):
+    def _resample_systematic(self, weights):
         u = (np.random.uniform(0, 1) + np.arange(0, self.n_particles, 1)) / self.n_particles
         return np.searchsorted(np.cumsum(weights / weights.sum()), u, side='left')
 
@@ -126,3 +126,76 @@ class ParticleFilter:
     def _visual_sim(self, descriptor_dists):
         log_sim = - descriptor_dists * self.lambda1
         return np.exp(log_sim - np.median(log_sim)) # subtracting median allows for numerical stability
+
+def main(args):
+    # load reference data
+    ref_poses, ref_descriptors, _ = utils.import_reference_map(args.reference_traverse)
+    # NN search tree for poses
+    ref_tree = Nigh.SE3Tree(2 * args.attitude_weight) # 2 times is b/c of rotation angle representation in library
+    ref_tree.insert(ref_poses.t(), ref_poses.R().as_quat())
+    # localize all selected query traverses
+    pbar = tqdm(args.query_traverses)
+    for traverse in pbar:
+        pbar.set_description(traverse)
+        # savepath
+        save_path = os.path.join(utils.results_path, traverse)
+        # load query data
+        query_poses, vo, rtk_motion, query_descriptors, _ = utils.import_query_traverse(traverse)
+        # regular traverse with VO
+        pbar = tqdm(args.descriptors, leave=False)
+        for desc in pbar:
+            pbar.set_description(desc)
+            save_path1 = os.path.join(save_path, desc) # one folder per descriptor
+            if not os.path.exists(save_path1): 
+                os.makedirs(save_path1)
+            model = ParticleFilter(ref_tree, ref_poses, ref_descriptors[desc], args.nparticles, args.lambda2, args.k_pose,  
+                                args.delta, args.attitude_weight, params.sigma_init, params.sigma_vo[traverse])
+            proposals, scores, times = utils.localize_traverses_filter(model, query_descriptors[desc], vo=vo, desc='Regular VO')
+            utils.save_obj(save_path1 + '/MCL.pickle', model='MCL', reference=args.reference_traverse, query=traverse, query_gt=query_poses, 
+                                            proposals=proposals, scores=scores, times=times)
+        # RTK motion ablation
+        pbar = tqdm(args.descriptors, leave=False)
+        for desc in pbar:
+            pbar.set_description(desc)
+            save_path1 = os.path.join(save_path, desc)
+            model = ParticleFilter(ref_tree, ref_poses, ref_descriptors[desc], args.nparticles, args.lambda2, args.k_pose,  
+                                args.delta, args.attitude_weight, params.sigma_init, params.sigma_vo[traverse])
+            proposals, scores, times = utils.localize_traverses_filter(model, query_descriptors[desc], vo=rtk_motion, desc='RTK motion')
+            utils.save_obj(save_path1 + '/MCL_RTK_motion.pickle', model='MCL RTK motion', reference=args.reference_traverse, query=traverse, query_gt=query_poses, 
+                                            proposals=proposals, scores=scores, times=times)
+        # Odometry only
+        pbar = tqdm(args.descriptors, leave=False)
+        for desc in pbar:
+            pbar.set_description(desc)
+            save_path1 = os.path.join(save_path, desc)
+            model = ParticleFilter(ref_tree, ref_poses, ref_descriptors[desc], args.nparticles, args.lambda2, args.k_pose,  
+                                args.delta, args.attitude_weight, params.sigma_init, params.sigma_vo[traverse], odom_only=True)
+            proposals, scores, times = utils.localize_traverses_filter(model, query_descriptors[desc], vo=rtk_motion, desc='Odom only')
+            utils.save_obj(save_path1 + '/MCL_odom_only.pickle', model='MCL odom only', reference=args.reference_traverse, query=traverse, query_gt=query_poses, 
+                                            proposals=proposals, scores=scores, times=times)
+    return None
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run MCL algorithm on trials")
+    parser.add_argument('-r', '--reference-traverse', type=str, default='Overcast',
+                        help="reference traverse used as the map")
+    parser.add_argument('-q', '--query-traverses', nargs='+', type=str, default=['Rain', 'Dusk', 'Night'],
+                        help="Names of query traverses to localize against reference map e.g. Overcast, Night, Dusk etc. \
+                            Input 'all' instead to process all traverses. See src/params.py for full list.")
+    parser.add_argument('-d', '--descriptors', nargs='+', type=str, default=['NetVLAD', 'DenseVLAD'], help='descriptor types to run experiments on.')
+    parser.add_argument('-M', '--nparticles', type=int, default=5000, 
+        help="number of particles to use during localisation")
+    parser.add_argument('-W', '--attitude-weight', type=float, default=20, 
+        help="weight for attitude components of pose distance equal to 1 / d for d being rotation angle (rad) equivalent to 1m translation")
+    parser.add_argument('-D', '--delta', type=float, default=10, 
+        help="multiple used for calibrating sensor update rate parameter. assumes 6sigma change in image difference causes m times sensor update")
+    parser.add_argument('-l2', '--lambda2', type=float, default=0.3, 
+        help="rate parameter for computing pose weights")
+    parser.add_argument('-kp', '--k-pose', type=int, default=3, 
+        help='number of nearest neighbours keyframes for each particle in observation likelihood')
+    parser.add_argument('-a', '--auxiliary', action='store_true', help='use auxiliary particle filter instead of bootstrap')
+    parser.add_argument('-g', '--gt-motion', action='store_true', help='use relative motion from RTK instead of VO')
+    parser.add_argument('-o', '--odom-only', action='store_true', help='use odometry component only')
+    args = parser.parse_args()
+
+    main(args)

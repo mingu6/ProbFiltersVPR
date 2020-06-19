@@ -32,22 +32,10 @@ def generate_random_localisations(start_indices, nloc, traverse_threshold, seq_l
     idx = rng.choice(np.arange(len(start_indices) - ind_gap), replace=False, size=nloc)
     return start_indices[np.sort(idx)]
 
-def load_query_data(name):
-    """
-    Helper function to load processed traverse data from disk for a given
-    traverse and descriptor combo for the purpose of constructing the query traverse.
-    """
-    with open(os.path.join(processed_path, name, "vo/vo.pickle"), 'rb') as f:
-        vo = pickle.load(f)
-    with open(os.path.join(processed_path, name, "rtk/rtk.pickle"), 'rb') as f:
-        gt = pickle.load(f)
-    return vo['cumulative'], gt['poses']
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=
             "Extract starting indices for query traverse and process traverses for random relocalisations")
-    parser.add_argument('-t', '--traverses', nargs='+', type=str, default=['all'],
+    parser.add_argument('-t', '--traverses', nargs='+', type=str, default=['Rain', 'Dusk', 'Night'],
                         help="Names of traverses to process, e.g. Overcast, Night, Dusk etc. \
                             Input 'all' instead to process all traverses. See src/params.py for full list.")
     parser.add_argument('-w', '--attitude-weight', type=float, default=20, 
@@ -118,7 +106,7 @@ if __name__ == "__main__":
             os.makedirs(descriptor_path)
         np.save(savepath + '/stereo_tstamps.npy', tstamps_full)
         utils.save_obj(rtkpath + "/rtk.pickle", rtk=rtkPoses)
-        utils.save_obj(savepath + "/vo.pickle", rtk=voQueries)
-        utils.save_obj(savepath + "/rtk_motion.pickle", rtk=rtkMotions)
+        utils.save_obj(savepath + "/vo.pickle", odom=voQueries)
+        utils.save_obj(savepath + "/rtk_motion.pickle", odom=rtkMotions)
         for name, mat in descriptors_full.items():
             np.save(descriptor_path + '/{}.npy'.format(name), np.asarray(mat))
