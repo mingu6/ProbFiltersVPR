@@ -104,9 +104,8 @@ def main(args):
             if not os.path.exists(save_path1): 
                 os.makedirs(save_path1)
             model = SeqSLAM(ref_poses, ref_descriptors[desc], args.wContrast, args.numVel, args.vMin, args.vMax, args.matchWindow, args.enhance)
-            proposals, scores, times = utils.localize_traverses_matching(model, query_descriptors[desc], desc='SeqSLAM')
-            utils.save_obj(save_path1 + '/SeqSLAM.pickle', model='SeqSLAM', reference=args.reference_traverse, query=traverse, query_gt=query_poses, 
-                                            proposals=proposals, scores=scores, times=times)
+            proposals, scores, times, query_gt = utils.localize_traverses_matching(model, query_poses, query_descriptors[desc], desc='SeqSLAM')
+            utils.save_obj(save_path1 + '/SeqSLAM.pickle', model='SeqSLAM', query_gt=query_gt, proposals=proposals, scores=scores, times=times)
     return None
 
 if __name__ == "__main__":

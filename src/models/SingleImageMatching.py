@@ -40,9 +40,8 @@ def main(args):
             if not os.path.exists(save_path1): 
                 os.makedirs(save_path1)
             model = SingleImageMatching(ref_poses, ref_descriptors[desc])
-            proposals, scores, times = utils.localize_traverses_matching(model, query_descriptors[desc], desc='Single')
-            utils.save_obj(save_path1 + '/Single.pickle', model='Single', reference=args.reference_traverse, query=traverse, query_gt=query_poses, 
-                                            proposals=proposals, scores=scores, times=times)
+            proposals, scores, times, query_gt = utils.localize_traverses_matching(model, query_poses, query_descriptors[desc], desc='Single')
+            utils.save_obj(save_path1 + '/Single.pickle', model='Single', query_gt=query_gt, proposals=proposals, scores=scores, times=times)
     return None
 
 if __name__ == "__main__":

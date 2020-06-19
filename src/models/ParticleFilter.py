@@ -151,8 +151,7 @@ def main(args):
             model = ParticleFilter(ref_tree, ref_poses, ref_descriptors[desc], args.nparticles, args.lambda2, args.k_pose,  
                                 args.delta, args.attitude_weight, params.sigma_init, params.sigma_vo[traverse])
             proposals, scores, times = utils.localize_traverses_filter(model, query_descriptors[desc], vo=vo, desc='Regular VO')
-            utils.save_obj(save_path1 + '/MCL.pickle', model='MCL', reference=args.reference_traverse, query=traverse, query_gt=query_poses, 
-                                            proposals=proposals, scores=scores, times=times)
+            utils.save_obj(save_path1 + '/MCL.pickle', model='MCL', query_gt=query_poses, proposals=proposals, scores=scores, times=times)
         # RTK motion ablation
         pbar = tqdm(args.descriptors, leave=False)
         for desc in pbar:
@@ -161,8 +160,7 @@ def main(args):
             model = ParticleFilter(ref_tree, ref_poses, ref_descriptors[desc], args.nparticles, args.lambda2, args.k_pose,  
                                 args.delta, args.attitude_weight, params.sigma_init, params.sigma_vo[traverse])
             proposals, scores, times = utils.localize_traverses_filter(model, query_descriptors[desc], vo=rtk_motion, desc='RTK motion')
-            utils.save_obj(save_path1 + '/MCL_RTK_motion.pickle', model='MCL RTK motion', reference=args.reference_traverse, query=traverse, query_gt=query_poses, 
-                                            proposals=proposals, scores=scores, times=times)
+            utils.save_obj(save_path1 + '/MCL_RTK_motion.pickle', model='MCL RTK motion', query_gt=query_poses, proposals=proposals, scores=scores, times=times)
         # Odometry only
         pbar = tqdm(args.descriptors, leave=False)
         for desc in pbar:
@@ -171,8 +169,7 @@ def main(args):
             model = ParticleFilter(ref_tree, ref_poses, ref_descriptors[desc], args.nparticles, args.lambda2, args.k_pose,  
                                 args.delta, args.attitude_weight, params.sigma_init, params.sigma_vo[traverse], odom_only=True)
             proposals, scores, times = utils.localize_traverses_filter(model, query_descriptors[desc], vo=rtk_motion, desc='Odom only')
-            utils.save_obj(save_path1 + '/MCL_odom_only.pickle', model='MCL odom only', reference=args.reference_traverse, query=traverse, query_gt=query_poses, 
-                                            proposals=proposals, scores=scores, times=times)
+            utils.save_obj(save_path1 + '/MCL_odom_only.pickle', model='MCL odom only', query_gt=query_poses, proposals=proposals, scores=scores, times=times)
     return None
 
 if __name__ == "__main__":

@@ -7,35 +7,34 @@ import matplotlib.pyplot as plt
 import pickle
 from tqdm import tqdm
 
-from src import geometry
+from src import geometry, utils
 
-################## filepaths ###################
-file_dir = os.path.dirname(os.path.abspath(__file__))
-raw_path = os.path.abspath(os.path.join(file_dir, "../../", "data/raw/RobotCar/"))
-processed_path = os.path.abspath(os.path.join(file_dir, "../../", "data/processed/RobotCar/"))
-results_path = os.path.abspath(os.path.join(file_dir, "../../", "results"))
-################################################
+def extract_gt_dists(query_gt, proposals, model):
+    if model not in ['SeqSLAM', 'Single']:
+        # extract relative poses and distances
+        t_dists = np.empty((len(query_gt), len(query_gt[0])))
+        R_dists = t_dists.copy()
+        for i in range(len(query_gt)):
+            # extract translation and rotation distances separately
+            rel_pose = query_gt[i].inv() * proposals[i]
+            t_dists[i, :] = np.linalg.norm(rel_pose.t(), axis=1)
+            R_dists[i, :] = rel_pose.R().magnitude()
+    else:
+        Trel = geometry.combine(query_gt) / geometry.combine(proposals)
+        t_dists = np.linalg.norm(Trel.t(), axis=1)
+        R_dists = Trel.R().magnitude()
+    return t_dists, R_dists
+
 def first_nonzero(arr, axis, invalid_val=-1):
     mask = arr!=0
     return np.where(mask.any(axis=axis), mask.argmax(axis=axis), invalid_val)
 
-def extract_gt_dists(query_gt, proposals):
-    # extract relative poses and distances
-    t_dists = np.empty((len(query_gt), len(query_gt[0])))
-    R_dists = t_dists.copy()
-    for i in range(len(query_gt)):
-        # extract translation and rotation distances separately
-        rel_pose = query_gt[i].inv() * proposals[i]
-        t_dists[i, :] = np.linalg.norm(rel_pose.t(), axis=1)
-        R_dists[i, :] = rel_pose.R().magnitude()
-    return t_dists, R_dists
-
 def localize_indices(scores, score_thres, model):
     # identify localization proposals when score is above/below threshold
-    if 'Particle' in model or model == 'Odometry Only' or model == 'SeqSLAM':
-        scores_loc = scores < score_thres
-    else:
+    if model == 'Topological':
         scores_loc = scores > score_thres
+    else:
+        scores_loc = scores < score_thres
     # take first localization in traverse and check pose error
     ind_loc = first_nonzero(scores_loc, 1)
     return ind_loc
@@ -49,11 +48,9 @@ def localize_indices_single(scores, score_thres):
 
 def generate_pr_curve(scores, t_dists, R_dists, t_thres, R_thres, model):
     scores_u = np.unique(scores)
-    if 'HMM' not in model:
+    if model != 'Topological':
         scores_u = np.flip(scores_u) # ensures iterating through list means higher model confidence
-    # scores_u = scores_u[7500:] # night
-    # scores_u = scores_u[7000:]
-    # scores_u = scores_u[7000:]
+    scores_u = scores_u[int(len(scores_u) * 0.5):] # chop off tail
     precisions = np.ones_like(scores_u)
     recalls = np.empty_like(scores_u)
     for i, score_thres in enumerate(scores_u):

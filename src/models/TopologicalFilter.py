@@ -77,8 +77,7 @@ def main(args):
                 os.makedirs(save_path1)
             model = TopologicalFilter(ref_poses, ref_descriptors[desc], args.delta, window_lower=args.window_lower, window_upper=args.window_upper)
             proposals, scores, times = utils.localize_traverses_filter(model, query_descriptors[desc], vo=None, desc='Topological')
-            utils.save_obj(save_path1 + '/Topological.pickle', model='Topological', reference=args.reference_traverse, query=traverse, query_gt=query_poses, 
-                                            proposals=proposals, scores=scores, times=times)
+            utils.save_obj(save_path1 + '/Topological.pickle', model='Topological', query_gt=query_poses, proposals=proposals, scores=scores, times=times)
     return None
 
 if __name__ == "__main__":

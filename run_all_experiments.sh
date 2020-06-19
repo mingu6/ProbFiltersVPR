@@ -6,11 +6,11 @@ SCRIPTPATH=$(dirname "$SCRIPT")
 
 cd $SCRIPTPATH
 echo "Running Monte Carlo localization... (1/4)"
-python3 runParticleFilter.py -A
+ParticleFilter.py -d NetVLAD
 echo "Running topological filter... (2/4)"
-python3 TopologicalFilter.py -A
+TopologicalFilter.py -d NetVLAD
 echo "Running single image matching... (3/4)"
-python3 single_frame_baseline.py -A
+SingleImageMatching.py -d NetVLAD
 echo "Running SeqSLAM... (4/4)"
-python3 seqSLAM_baseline.py -A
+SeqSLAM.py -d NetVLAD
 echo "All experiments complete!"

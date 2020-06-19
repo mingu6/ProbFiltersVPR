@@ -7,14 +7,16 @@ from tqdm import tqdm, trange
 
 from . import params, geometry
 
-################## filepaths ###################
+################## MODIFY BELOW ####################
+raw_path = "/home/ming/data/raw/RobotCar/" # raw immutable data path with raw sensor data files only
+processed_path = "/home/ming/data/processed/RobotCar/" # path for image descriptors, interpolated GPS poses etc.
+################ DO NOT MODIFY BELOW ###############
 curr_path = os.path.dirname(os.path.realpath(__file__))
-raw_path = "/home/ming/data/raw/RobotCar/"
-processed_path = "/home/ming/data/processed/RobotCar/"
-reference_path = os.path.abspath(os.path.join(curr_path, "..", "data/reference"))
+reference_path = os.path.abspath(os.path.join(curr_path, "..", "data/reference")) 
 query_path = os.path.abspath(os.path.join(curr_path, "..", "data/query"))
 results_path = os.path.abspath(os.path.join(curr_path, "..", "results"))
-################################################
+figures_path = os.path.abspath(os.path.join(curr_path, "..", "figures"))
+####################################################
 
 def save_obj(savepath, **components):
     with open(savepath, 'wb') as f:
@@ -124,14 +126,15 @@ def localize_traverses_filter(model, query_descriptors, vo=None, desc=None):
         times.append(times_seq)
     return proposals, scores, times
 
-def localize_traverses_matching(model, query_descriptors, desc=None):
+def localize_traverses_matching(model, query_poses, query_descriptors, desc=None):
     nloc = len(query_descriptors) # number of localizations
     # localize trials!
-    proposals, scores, times = [], [], []
+    proposals, scores, times, query_gts = [], [], [], []
     for i in trange(nloc, desc=desc, leave=False):
         start = time.time() # begin timing localization
         proposal, score = model.localize(query_descriptors[i])
         times.append(time.time() - start)
         proposals.append(proposal)
         scores.append(score)
-    return proposals, scores, times
+        query_gts.append(query_poses[i][0])
+    return proposals, scores, times, query_gts
