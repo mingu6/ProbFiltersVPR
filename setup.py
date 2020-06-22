@@ -16,6 +16,8 @@ setup(
         'src/models/ParticleFilter.py',
         'src/models/TopologicalFilter.py',
         'src/models/SeqSLAM.py',
-        'src/models/SingleImageMatching.py'
+        'src/models/SingleImageMatching.py',
+        'src/figures/tables.py',
+        'src/figures/PR_curves.py'
     ]
 )

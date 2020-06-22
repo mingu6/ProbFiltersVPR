@@ -1,0 +1,34 @@
+Tolerance: 5m 10deg
+
+Max recall at 0.99
+
+ Models            Rain NetVLAD    Rain DenseVLAD    Dusk NetVLAD    Dusk DenseVLAD    Night NetVLAD    Night DenseVLAD
+--------------  --------------  ----------------  --------------  ----------------  ---------------  -----------------
+MCL                        6.6               7.2             5.8              68.4             66.6               76.0
+MCL_RTK_motion            20.4               9.4            92.2              89.2             74.0               85.4
+MCL_odom_only             11.8               9.8            16.0               5.0              0.0                0.4
+SeqSLAM                    5.0               3.2            14.4               8.0              8.2                9.0
+Single                    52.0              52.2             5.6               4.8              3.2                0.4
+Topological               82.6              76.4            83.8              68.2             52.4               60.4
+
+Compute time per iteration
+
+ Models            Rain NetVLAD    Rain DenseVLAD    Dusk NetVLAD    Dusk DenseVLAD    Night NetVLAD    Night DenseVLAD
+--------------  --------------  ----------------  --------------  ----------------  ---------------  -----------------
+MCL                       48.6              53.1            62.8              65.5             51.3               71.2
+MCL_RTK_motion            46.6              49.7            68.1              69.6             51.9               72.4
+MCL_odom_only             29.2             inf              33.9              34.2            nan                 27.5
+SeqSLAM                  116.1              95.1            96.5              97.7             96.4               95.4
+Single                    93.9              91.3            93.1              92.4             93.8               92.2
+Topological              124.7             140.0           132.2             161.9            101.7              112.1
+
+Number of steps until localized
+
+ Models            Rain NetVLAD    Rain DenseVLAD    Dusk NetVLAD    Dusk DenseVLAD    Night NetVLAD    Night DenseVLAD
+--------------  --------------  ----------------  --------------  ----------------  ---------------  -----------------
+MCL                       14.6              15.2            14.8              11.4             16.5               13.1
+MCL_RTK_motion            15.2              14.9            13.0               9.8             16.0               12.0
+MCL_odom_only             19.1              17.0            22.7              23.8            nan                 27.0
+SeqSLAM                   30.0              30.0            30.0              30.0             30.0               30.0
+Single                     1.0               1.0             1.0               1.0              1.0                1.0
+Topological                7.5               9.4             9.9              11.8             15.9               12.9

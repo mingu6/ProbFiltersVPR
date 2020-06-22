@@ -93,7 +93,7 @@ if __name__ == "__main__":
             rtkPoses.append(rtk_poses[indices])
             # for each descriptor type, add sequence to list
             for desc, mat in descriptors.items():
-                descriptors_full[desc].append(mat[indices]) 
+                descriptors_full[desc].append(mat[indices].astype(np.float32)) # descriptors in float32 for speed (float64 2x slower!)
             tstamps_full.append(tstamps[indices])
 
         # save all to disk

@@ -72,5 +72,5 @@ if __name__ == "__main__":
         np.save(basepath + '/stereo_tstamps.npy', tstamps_ref)
         utils.save_obj(rtkpath + "/rtk.pickle", rtk=rtk_ref)
         for name, mat in descriptors.items():
-            mat_ref = mat[indices]
+            mat_ref = mat[indices].astype(np.float32) # descriptors in float32 for speed (float64 2x slower!)
             np.save(descriptorpath + '/{}.npy'.format(name), mat_ref)

@@ -15,7 +15,10 @@ class SingleImageMatching:
         self.map_descriptors = map_descriptors
 
     def localize(self, query_descriptors):
-        dists = np.linalg.norm(query_descriptors[0].reshape(1, -1) - self.map_descriptors, axis=1)
+        return self.localize_descriptor(query_descriptors[0])
+
+    def localize_descriptor(self, query_descriptor):
+        dists = np.linalg.norm(query_descriptor.reshape(1, -1) - self.map_descriptors, axis=1)
         idx = np.argmin(dists)
         proposal = self.map_poses[idx]
         score = dists[idx]

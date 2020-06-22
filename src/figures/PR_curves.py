@@ -19,7 +19,7 @@ def main(args):
     for i in range(nDescriptors):
         for j in range(nQueries):
             results_path = os.path.join(utils.results_path, args.query_traverses[j], args.descriptors[i])
-            for fname in os.listdir(results_path):
+            for fname in sorted(os.listdir(results_path)):
                 with open(os.path.join(results_path, fname), 'rb') as f:
                     results = pickle.load(f)
                 # extract results data from dict
@@ -51,7 +51,7 @@ def main(args):
     # fig.tight_layout(rect=[0.05, 0.05, 0.95, 0.95])
     fig.tight_layout()
     # plt.subplots_adjust(wspace=0, hspace=0)
-    plt.savefig(utils.figures_path + '/PR.png', bbox_inches='tight')
+    plt.savefig(utils.figures_path + '/PR_{:.0f}m_{:.0f}d.png'.format(args.t_thres, args.R_thres), bbox_inches='tight')
 
 
 

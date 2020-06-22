@@ -105,7 +105,7 @@ def main(args):
                 os.makedirs(save_path1)
             model = SeqSLAM(ref_poses, ref_descriptors[desc], args.wContrast, args.numVel, args.vMin, args.vMax, args.matchWindow, args.enhance)
             proposals, scores, times, query_gt = utils.localize_traverses_matching(model, query_poses, query_descriptors[desc], desc='SeqSLAM')
-            utils.save_obj(save_path1 + '/SeqSLAM.pickle', model='SeqSLAM', query_gt=query_gt, proposals=proposals, scores=scores, times=times)
+            utils.save_obj(save_path1 + '/SeqSLAM.pickle', model='SeqSLAM', query_gt=query_gt, proposals=proposals, scores=scores, times=times, L=query_descriptors[desc].shape[1])
     return None
 
 if __name__ == "__main__":
