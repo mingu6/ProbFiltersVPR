@@ -7,7 +7,9 @@ setup(
         'numpy>=1.18.1',
         'scipy>=1.4.1',
         'tqdm',
-        'matplotlib'
+        'matplotlib',
+        'tabulate',
+        'ffmpeg'
     ],
     scripts=[
         'src/data/interpolate_raw_data.py',
@@ -15,9 +17,9 @@ setup(
         'src/data/create_query_traverses.py',
         'src/models/ParticleFilter.py',
         'src/models/TopologicalFilter.py',
-        'src/models/SeqSLAM.py',
+        'src/models/SeqMatching.py',
         'src/models/SingleImageMatching.py',
         'src/figures/tables.py',
-        'src/figures/PR_curves.py'
+        'src/figures/results.py'
     ]
 )
