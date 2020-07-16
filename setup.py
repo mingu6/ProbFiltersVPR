@@ -19,7 +19,6 @@ setup(
         'src/models/TopologicalFilter.py',
         'src/models/SeqMatching.py',
         'src/models/SingleImageMatching.py',
-        'src/figures/tables.py',
         'src/figures/results.py'
     ]
 )

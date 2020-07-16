@@ -10,12 +10,13 @@ import matplotlib.image as mpimg
 from matplotlib.colors import Normalize
 
 from src import geometry, utils, params
+from src.settings import READY_PATH
+
 from src.models.ParticleFilter import ParticleFilter
 from src.models.TopologicalFilter import TopologicalFilter
-from src.models.SeqSLAM import SeqSLAM
+from src.models.SeqMatching import SeqMatching
 from src.models.SingleImageMatching import SingleImageMatching
 from src.thirdparty.nigh import Nigh
-from src.thirdparty.robotcar_dataset_sdk import image, camera_model
 
 # ranges for scores in visualization
 vmins = [0., 0.] # PF, Topo
@@ -38,17 +39,16 @@ def main(args):
     nearest_ref_images = []
     for t in range(len(query_tstamps)):
         # load query images
-        imgFolderQ = os.path.join(utils.raw_path, params.traverses[args.query_traverse], 'stereo/left')
+        imgFolderQ = os.path.join(READY_PATH, params.traverses[args.query_traverse], 'stereo/left')
         imgPathQ = os.path.join(imgFolderQ, str(query_tstamps[t]) + '.png')
-        camera = camera_model.CameraModel(utils.raw_path + 'camera-models/', imgFolderQ)
-        imgQ = image.load_image(imgPathQ, model=camera)
+        imgQ = plt.imread(imgPathQ)
         query_images.append(imgQ)
-    
+
         distrel = geometry.metric(query_poses[t], ref_poses, args.attitude_weight)
         idx = np.argmin(distrel)
-        imgFolderR = os.path.join(utils.raw_path, params.traverses[args.reference_traverse], 'stereo/left')
+        imgFolderR = os.path.join(READY_PATH, params.traverses[args.reference_traverse], 'stereo/left')
         imgPathR = os.path.join(imgFolderR, str(ref_tstamps[idx]) + '.png')
-        imgR = image.load_image(imgPathR, model=camera)
+        imgR = plt.imread(imgPathR)
         nearest_ref_images.append(imgR)
     # setup particle filter
     ref_tree = Nigh.SE3Tree(2 * args.attitude_weight) # 2 times is b/c of rotation angle representation in library
@@ -60,8 +60,8 @@ def main(args):
     topofilter = TopologicalFilter(ref_poses, ref_descriptors[args.descriptor], args.delta_topo, window_lower=args.window_lower, window_upper=args.window_upper)
     topofilter.initialize_model(query_descriptors[0, :])
     # setup and localize SeqSLAM
-    seqslam = SeqSLAM(ref_poses, ref_descriptors[args.descriptor], args.wContrast, args.numVel, args.vMin, args.vMax, args.matchWindow, args.enhance)
-    proposalSS, scoreSS = seqslam.localize(query_descriptors)
+    seqmatch = SeqMatching(ref_poses, ref_descriptors[args.descriptor], args.wContrast, args.numVel, args.vMin, args.vMax, args.matchWindow, args.enhance)
+    proposalSS, scoreSS = seqmatch.localize(query_descriptors)
     # setup single image matching
     single = SingleImageMatching(ref_poses, ref_descriptors[args.descriptor])
 
@@ -191,7 +191,7 @@ if __name__ == "__main__":
         help="minimum state transition in transition matrix")
     parser.add_argument('-wu', '--window-upper', type=int, default=10, 
         help="maximum state transition in transition matrix")
-    # SeqSLAM parameters
+    # Sequence matching parameters
     parser.add_argument('-wc', '--wContrast', type=int, default=10, 
         help="window used for local contrast enhancement in difference matrix")
     parser.add_argument('-nv', '--numVel', type=int, default=20, 

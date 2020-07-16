@@ -1,0 +1,11 @@
+numpy
+opencv-python
+tqdm
+jupyter
+matplotlib
+sklearn
+pillow
+lxml
+requests
+scipy>=1.5.0
+tabulate

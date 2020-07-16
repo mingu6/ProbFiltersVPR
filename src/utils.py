@@ -6,12 +6,8 @@ import numpy as np
 from tqdm import tqdm, trange
 
 from src import params, geometry
+from src.settings import RAW_PATH, READY_PATH, PROCESSED_PATH
 
-################## MODIFY BELOW ####################
-# raw immutable data path with raw sensor data files only
-raw_path = "/home/ming/data/raw/RobotCar/"
-# path for image descriptors, interpolated GPS poses etc.
-processed_path = "/home/ming/data/processed/RobotCar/"
 ################ DO NOT MODIFY BELOW ###############
 curr_path = os.path.dirname(os.path.realpath(__file__))
 reference_path = os.path.abspath(os.path.join(curr_path, "..",
@@ -21,10 +17,12 @@ results_path = os.path.abspath(os.path.join(curr_path, "..", "results"))
 figures_path = os.path.abspath(os.path.join(curr_path, "..", "figures"))
 ####################################################
 
+
 def save_obj(savepath, **components):
     with open(savepath, 'wb') as f:
         pickle.dump(components, f)
     return save_obj
+
 
 def load_traverse_data(name):
     """
@@ -33,24 +31,24 @@ def load_traverse_data(name):
     reference traverse.
     """
     # import timestamps
-    tstamps_dir = os.path.join(processed_path, params.traverses[name],
+    tstamps_dir = os.path.join(PROCESSED_PATH, params.traverses[name],
                                "stereo_tstamps.npy")
     tstamps = np.load(tstamps_dir)
 
     # import RTK GPS poses for images
-    rtk_dir = os.path.join(processed_path, params.traverses[name],
+    rtk_dir = os.path.join(PROCESSED_PATH, params.traverses[name],
                            "rtk/stereo/left/rtk.pickle")
     with open(rtk_dir, 'rb') as f:
         rtk_poses = pickle.load(f)['rtk']
 
     # import VO
-    vo_dir = os.path.join(processed_path, params.traverses[name],
+    vo_dir = os.path.join(PROCESSED_PATH, params.traverses[name],
                           "vo/vo.pickle")
     with open(vo_dir, 'rb') as f:
         vo_cumulative = pickle.load(f)['cumulative']
 
     # import all available image descriptors
-    descriptors_dir = os.path.join(processed_path,
+    descriptors_dir = os.path.join(PROCESSED_PATH,
                                    params.traverses[name], "stereo/left/")
     descriptors = {}
     for fname in os.listdir(descriptors_dir):
@@ -59,6 +57,7 @@ def load_traverse_data(name):
             descriptorMat = np.load(os.path.join(descriptors_dir, fname))
             descriptors[descriptorName] = descriptorMat
     return rtk_poses, vo_cumulative, descriptors, tstamps
+
 
 def import_query_traverse(name):
     # import timestamps
@@ -69,7 +68,7 @@ def import_query_traverse(name):
     with open(rtk_dir, 'rb') as f:
         rtk_poses = pickle.load(f)['rtk']
     # import VO and RTK motion
-    with open(base_dir +'/vo.pickle', 'rb') as f:
+    with open(base_dir + '/vo.pickle', 'rb') as f:
         vo = pickle.load(f)['odom']
     with open(base_dir + '/rtk_motion.pickle', 'rb') as f:
         rtk_motion = pickle.load(f)['odom']
@@ -161,7 +160,6 @@ def localize_traverses_matching(model, query_poses, query_descriptors,
 def remove_far_queries(ref_tree, ref_poses, query_poses):
     # import matplotlib.pyplot as plt
     divergence = []
-    # query_0 = []
     for i in range(len(query_poses)):
         query_seq = query_poses[i]
         dist, ind = ref_tree.nearest(query_seq.t(),

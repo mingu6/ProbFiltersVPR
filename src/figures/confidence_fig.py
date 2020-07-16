@@ -8,9 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from src import geometry, utils, params
-from src.models.ParticleFilter import ParticleFilter
 from src.models.TopologicalFilter import TopologicalFilter
-from src.models.SeqSLAM import SeqSLAM
 from src.models.SingleImageMatching import SingleImageMatching
 from src.thirdparty.nigh import Nigh
 
@@ -28,12 +26,14 @@ def main(args):
     ref_poses_x, ref_poses_y = ref_poses.t()[:, 1], ref_poses.t()[:, 0]
     query_descriptors = query_descriptors[args.descriptor][args.nloc]
     query_poses = query_poses[args.nloc]
-    query_poses_x, query_poses_y = query_poses.t()[:, 1], query_poses.t()[:, 0]
+    query_poses_x, query_poses_y = \
+        query_poses.t()[:, 1], query_poses.t()[:, 0]
     L = len(vo[args.nloc]) + 1  # max sequence length
     vo = vo[args.nloc]
     # setup topological filter
     topofilter = TopologicalFilter(ref_poses, ref_descriptors[args.descriptor],
-                                   args.delta_topo, window_lower=args.window_lower, 
+                                   args.delta_topo,
+                                   window_lower=args.window_lower,
                                    window_upper=args.window_upper)
     topofilter.initialize_model(query_descriptors[0, :])
     # setup single image matching
@@ -83,46 +83,30 @@ def main(args):
     plt.subplots_adjust(wspace=0, hspace=0)
     plt.savefig(utils.figures_path + '/confidence_fig.png')
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate first system figure for paper")
-    parser.add_argument('-r', '--reference-traverse', type=str, default='Overcast',
+    parser = argparse.ArgumentParser(
+        description="Generate first system figure for paper")
+    parser.add_argument('-r', '--reference-traverse',
+                        type=str, default='Overcast',
                         help="reference traverse used to build map")
     parser.add_argument('-q', '--query-traverse', type=str, default='Night',
-                        help="query traverse to localize against reference map")
-    parser.add_argument('-d', '--descriptor', type=str, default='NetVLAD', help='descriptor type to run model using.')
-    parser.add_argument('-nl', '--nloc', type=int, default=5, 
-        help="which trial to generate figure for")
-    parser.add_argument('-ni', '--niter', type=int, default=4, 
-        help="which intermediate iteration to check figure")
-    # particle filter parameters
-    parser.add_argument('-m', '--nparticles', type=int, default=8000, 
-        help="number of particles to use during localisation")
-    parser.add_argument('-w', '--attitude-weight', type=float, default=15, 
-        help="weight for attitude components of pose distance equal to 1 / d for d being rotation angle (rad) equivalent to 1m translation")
-    parser.add_argument('-dp', '--delta-particles', type=float, default=5, 
-        help="multiple used for calibrating sensor update rate parameter. assumes 6sigma change in image difference causes m times sensor update")
-    parser.add_argument('-l2', '--lambda2', type=float, default=0.2, 
-        help="rate parameter for computing pose weights")
-    parser.add_argument('-kp', '--k-pose', type=int, default=3, 
-        help='number of nearest neighbours keyframes for each particle in observation likelihood')
+                        help="query traverse to localize against"
+                        "reference map")
+    parser.add_argument('-d', '--descriptor', type=str, default='NetVLAD',
+                        help='descriptor type to run model using.')
+    parser.add_argument('-nl', '--nloc', type=int, default=5,
+                        help="which trial to generate figure for")
+    parser.add_argument('-ni', '--niter', type=int, default=4,
+                        help="which intermediate iteration to check figure")
     # topological filter parameters
-    parser.add_argument('-dt', '--delta-topo', type=float, default=5, 
-        help="multiple used for calibrating sensor update rate parameter. assumes 6sigma change in image difference causes m times sensor update")
-    parser.add_argument('-wl', '--window-lower', type=int, default=-2, 
-        help="minimum state transition in transition matrix")
-    parser.add_argument('-wu', '--window-upper', type=int, default=10, 
-        help="maximum state transition in transition matrix")
-    # SeqSLAM parameters
-    parser.add_argument('-wc', '--wContrast', type=int, default=10, 
-        help="window used for local contrast enhancement in difference matrix")
-    parser.add_argument('-nv', '--numVel', type=int, default=20, 
-        help="number of velocities to search for sequence matching")
-    parser.add_argument('-vm', '--vMin', type=float, default=1, 
-        help="minimum multiple of query to reference velocity")
-    parser.add_argument('-vM', '--vMax', type=float, default=10, 
-        help="maximum multiple of query to reference velocity")
-    parser.add_argument('-wm', '--matchWindow', type=int, default=20, 
-        help="window used for scoring optimal trajectories for each reference")
-    parser.add_argument('-e', '--enhance', action='store_true', help='apply contrast enhancement')
+    parser.add_argument('-dt', '--delta-topo', type=float, default=5,
+                        help="multiple used for calibrating sensor update"
+                        "rate parameter. assumes 6sigma change in image"
+                        "difference causes m times sensor update")
+    parser.add_argument('-wl', '--window-lower', type=int, default=-2,
+                        help="minimum state transition in transition matrix")
+    parser.add_argument('-wu', '--window-upper', type=int, default=10,
+                        help="maximum state transition in transition matrix")
     args = parser.parse_args()
     main(args)

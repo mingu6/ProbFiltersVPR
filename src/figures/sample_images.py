@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from src import utils, geometry, params
-from src.thirdparty.robotcar_dataset_sdk import image, camera_model
+from src.settings import READY_PATH
 
 
 def main(args):
@@ -13,7 +13,6 @@ def main(args):
     t_tol = np.array([3., 5.])
     R_tol = np.array([15., 30.])
     # which reference images to display
-    # indices = np.asarray([30, 4500, 6953, 12100, 17000, 25170])
     indices = np.asarray([30, 6953, 25170])
     # import reference traverse data 
     ref_poses, _, _, ref_tstamps = utils.load_traverse_data(args.reference)
@@ -39,7 +38,7 @@ def main(args):
                 )
             if j == 0:
                 imgFolder = os.path.join(
-                    utils.raw_path, params.traverses[args.reference],
+                    READY_PATH, params.traverses[args.reference],
                     'stereo/left')
                 imgPath = os.path.join(imgFolder,
                                        str(ref_tstamps[indR]) + '.png')
@@ -55,15 +54,12 @@ def main(args):
                 bothOK = np.argwhere(np.logical_and(tOK, ROK))
                 indQ = np.squeeze(bothOK[np.argmax(SE3dist[bothOK])])
                 # display image
-                imgFolder = os.path.join(utils.raw_path,
+                imgFolder = os.path.join(READY_PATH,
                                          params.traverses[traverse],
                                          'stereo/left')
                 imgPath = os.path.join(imgFolder,
                                        str(query_tstamps[indQ]) + '.png')
-            # import camera model to undistort images
-            camera = camera_model.CameraModel(
-                utils.raw_path + 'camera-models/', imgFolder)
-            img = image.load_image(imgPath, model=camera)
+            img = plt.imread(imgPath)
             axs[i, j].set_xticks([])
             axs[i, j].set_yticks([])
             axs[i, j].imshow(img)
@@ -75,7 +71,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run SeqSLAM on trials")
+    parser = argparse.ArgumentParser(description="Generate sample images")
     parser.add_argument('-r', '--reference', type=str, default='Overcast',
                         help="reference traverse used as the map")
     parser.add_argument('-q', '--queries', nargs='+', type=str,

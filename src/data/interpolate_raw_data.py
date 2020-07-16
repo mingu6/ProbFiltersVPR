@@ -12,12 +12,13 @@ from tqdm import tqdm
 from src import geometry, utils, params
 from src.thirdparty.robotcar_dataset_sdk import\
     interpolate_poses, transform
+from src.settings import RAW_PATH
 
 
 def process_raw_traverse(name):
-    raw_dir = os.path.join(utils.raw_path, params.traverses[name])
+    raw_dir = os.path.join(RAW_PATH, params.traverses[name])
     vo_path = raw_dir + '/vo/vo.csv'
-    rtk_path = raw_dir + '/rtk/rtk.csv'
+    rtk_path = raw_dir + '/rtk.csv'
 
     def tstamp(fname):
         """
