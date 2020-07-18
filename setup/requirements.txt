@@ -9,3 +9,8 @@ lxml
 requests
 scipy>=1.5.0
 tabulate
+ffmpeg
+colour_demosaicing
+image
+pandas
+pybind11

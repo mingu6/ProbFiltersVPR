@@ -1,4 +1,3 @@
-
 import sys
 import os
 import argparse
@@ -10,14 +9,13 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 
 from src import geometry, utils, params
-from src.thirdparty.robotcar_dataset_sdk import\
-    interpolate_poses, transform
+from src.thirdparty.robotcar_dataset_sdk import interpolate_poses, transform
 from create_reference_maps import build_reference_keyframes
 
 
-def generate_random_localisations(start_indices, nloc,
-                                  traverse_threshold, seq_len,
-                                  start_threshold=0.5, seed=1):
+def generate_random_localisations(
+    start_indices, nloc, traverse_threshold, seq_len, start_threshold=0.5, seed=1
+):
     """
     Generates nloc random indices from raw query traverse to commence
     localisation.
@@ -38,47 +36,78 @@ def generate_random_localisations(start_indices, nloc,
     # a full sequence of len seq_len (given traverse_threshold)
     # after initialisation.
     ind_gap = int(traverse_threshold * seq_len / start_threshold)
-    idx = rng.choice(np.arange(len(start_indices) - ind_gap),
-                     replace=False, size=nloc)
+    idx = rng.choice(np.arange(len(start_indices) - ind_gap), replace=False, size=nloc)
     return start_indices[np.sort(idx)]
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Extract starting"
-                                     "indices for query traverse and"
-                                     "process traverses for random"
-                                     "relocalisations")
-    parser.add_argument('-t', '--traverses', nargs='+', type=str,
-                        default=['Sun', 'Dusk', 'Night'],
-                        help="Names of traverses to process,"
-                        "e.g. Overcast, Night, Dusk etc."
-                        "Input 'all' instead to process all traverses."
-                        "See src/params.py for full list.")
-    parser.add_argument('-w', '--attitude-weight', type=float, default=15,
-                        help="weight for attitude components of pose"
-                        "distance equal to d where 1 / d being rotation"
-                        "angle (rad) equivalent to 1m translation")
-    parser.add_argument('-ti', '--kf-threshold-indices', type=float,
-                        default=0.5,
-                        help="threshold on weighted pose distance"
-                        "to generate new starting index")
-    parser.add_argument('-tt', '--kf-threshold-traverse',
-                        type=float, default=3,
-                        help="threshold on weighted pose distance"
-                        "for traverse from starting index")
-    parser.add_argument('-L', '--seq-len', type=int, default=30,
-                        help="number of keyframes in sequence for"
-                        "each trial relocalisation")
-    parser.add_argument('-n', '--nloc', type=int, default=500,
-                        help="number of relocalisations to perform"
-                        "from generated indices")
+    parser = argparse.ArgumentParser(
+        description=(
+            "Extract starting"
+            "indices for query traverse and"
+            "process traverses for random"
+            "relocalisations"
+        )
+    )
+    parser.add_argument(
+        "-t",
+        "--traverses",
+        nargs="+",
+        type=str,
+        default=["Rain", "Dusk", "Night"],
+        help=(
+            "Names of traverses to process,"
+            "e.g. Overcast, Night, Dusk etc."
+            "Input 'all' instead to process all traverses."
+            "See src/params.py for full list."
+        ),
+    )
+    parser.add_argument(
+        "-w",
+        "--attitude-weight",
+        type=float,
+        default=15,
+        help=(
+            "weight for attitude components of pose"
+            "distance equal to d where 1 / d being rotation"
+            "angle (rad) equivalent to 1m translation"
+        ),
+    )
+    parser.add_argument(
+        "-ti",
+        "--kf-threshold-indices",
+        type=float,
+        default=0.5,
+        help="threshold on weighted pose distanceto generate new starting index",
+    )
+    parser.add_argument(
+        "-tt",
+        "--kf-threshold-traverse",
+        type=float,
+        default=3,
+        help="threshold on weighted pose distancefor traverse from starting index",
+    )
+    parser.add_argument(
+        "-L",
+        "--seq-len",
+        type=int,
+        default=30,
+        help="number of keyframes in sequence foreach trial relocalisation",
+    )
+    parser.add_argument(
+        "-n",
+        "--nloc",
+        type=int,
+        default=500,
+        help="number of relocalisations to performfrom generated indices",
+    )
     args = parser.parse_args()
 
     w = args.attitude_weight
     T = args.kf_threshold_traverse
     L = args.seq_len
 
-    if 'all' in args.traverses:
+    if "all" in args.traverses:
         names = params.traverses.keys()
     else:
         names = args.traverses
@@ -87,17 +116,18 @@ if __name__ == "__main__":
     for name in pbar:
         pbar.set_description(name)
         # load full traverse data
-        rtk_poses, vo_cumulative, descriptors, tstamps = \
-            utils.load_traverse_data(name)
-        start_indices = \
-            build_reference_keyframes(
-                rtk_poses, args.kf_threshold_indices,
-                args.attitude_weight)
-        random_indices = \
-            generate_random_localisations(
-                start_indices, args.nloc, args.kf_threshold_traverse,
-                args.seq_len, args.kf_threshold_indices)
-        # from starting indices, generate finite length traverses 
+        rtk_poses, vo_cumulative, descriptors, tstamps = utils.load_traverse_data(name)
+        start_indices = build_reference_keyframes(
+            rtk_poses, args.kf_threshold_indices, args.attitude_weight
+        )
+        random_indices = generate_random_localisations(
+            start_indices,
+            args.nloc,
+            args.kf_threshold_traverse,
+            args.seq_len,
+            args.kf_threshold_indices,
+        )
+        # from starting indices, generate finite length traverses
         voQueries = []
         rtkMotions = []
         rtkPoses = []
@@ -113,14 +143,11 @@ if __name__ == "__main__":
             recent_id = start_id  # id of most recent keyframe
             curr_id = start_id + 1  # current active frame
             while len(indices) < L:
-                dist = geometry.metric(rtk_poses[recent_id],
-                                       rtk_poses[curr_id], w)
+                dist = geometry.metric(rtk_poses[recent_id], rtk_poses[curr_id], w)
                 if dist > T:
                     indices.append(curr_id)
-                    voQuery.append(vo_cumulative[recent_id] /
-                                   vo_cumulative[curr_id])
-                    rtkMotion.append(rtk_poses[recent_id] /
-                                     rtk_poses[curr_id])
+                    voQuery.append(vo_cumulative[recent_id] / vo_cumulative[curr_id])
+                    rtkMotion.append(rtk_poses[recent_id] / rtk_poses[curr_id])
                     # update pose of new keyframe as current
                     rtk_curr = rtk_poses[curr_id]
                     recent_id = curr_id
@@ -132,25 +159,24 @@ if __name__ == "__main__":
             # for each descriptor type, add sequence to list
             for desc, mat in descriptors.items():
                 # descriptors in float32 for speed (float64 2x slower!)
-                descriptors_full[desc].append(
-                    mat[indices].astype(np.float32))
+                descriptors_full[desc].append(mat[indices].astype(np.float32))
                 tstamps_full.append(tstamps[indices])
 
         # save all to disk
         savepath = os.path.join(utils.query_path, params.traverses[name])
-        rtkpath = os.path.join(utils.query_path,
-                               params.traverses[name], 'rtk/stereo/left')
-        if not os.path.exists(rtkpath): 
+        rtkpath = os.path.join(
+            utils.query_path, params.traverses[name], "rtk/stereo/left"
+        )
+        if not os.path.exists(rtkpath):
             os.makedirs(rtkpath)
         descriptor_path = os.path.join(
-            utils.query_path, params.traverses[name],
-            'descriptors/stereo/left')
-        if not os.path.exists(descriptor_path): 
+            utils.query_path, params.traverses[name], "descriptors/stereo/left"
+        )
+        if not os.path.exists(descriptor_path):
             os.makedirs(descriptor_path)
-        np.save(savepath + '/stereo_tstamps.npy', tstamps_full)
+        np.save(savepath + "/stereo_tstamps.npy", tstamps_full)
         utils.save_obj(rtkpath + "/rtk.pickle", rtk=rtkPoses)
         utils.save_obj(savepath + "/vo.pickle", odom=voQueries)
         utils.save_obj(savepath + "/rtk_motion.pickle", odom=rtkMotions)
         for name, mat in descriptors_full.items():
-            np.save(descriptor_path + '/{}.npy'.format(name),
-                    np.asarray(mat))
+            np.save(descriptor_path + "/{}.npy".format(name), np.asarray(mat))

@@ -1,0 +1,7 @@
+README.md
+setup.py
+NighWrapper.egg-info/PKG-INFO
+NighWrapper.egg-info/SOURCES.txt
+NighWrapper.egg-info/dependency_links.txt
+NighWrapper.egg-info/top_level.txt
+src/python/SE3_bindings.cpp

@@ -1,4 +1,3 @@
-
 import os
 import argparse
 import pickle
@@ -28,8 +27,7 @@ class SingleImageMatching:
 
 def main(args):
     # load reference data
-    ref_poses, ref_descriptors, _ = utils.import_reference_map(
-        args.reference_traverse)
+    ref_poses, ref_descriptors, _ = utils.import_reference_map(args.reference_traverse)
     # localize all selected query traverses
     pbar = tqdm(args.query_traverses)
     for traverse in pbar:
@@ -37,8 +35,7 @@ def main(args):
         # savepath
         save_path = os.path.join(utils.results_path, traverse)
         # load query data
-        query_poses, _, _, query_descriptors, _ =\
-            utils.import_query_traverse(traverse)
+        query_poses, _, _, query_descriptors, _ = utils.import_query_traverse(traverse)
         # regular traverse with VO
         pbar = tqdm(args.descriptors, leave=False)
         for desc in pbar:
@@ -48,32 +45,50 @@ def main(args):
             if not os.path.exists(save_path1):
                 os.makedirs(save_path1)
             model = SingleImageMatching(ref_poses, ref_descriptors[desc])
-            proposals, scores, times, query_gt = \
-                utils.localize_traverses_matching(
-                    model, query_poses, query_descriptors[desc],
-                    desc='Single')
-            utils.save_obj(save_path1 + '/Single.pickle',
-                           model='Single', query_gt=query_gt,
-                           proposals=proposals, scores=scores,
-                           times=times)
+            proposals, scores, times, query_gt = utils.localize_traverses_matching(
+                model, query_poses, query_descriptors[desc], desc="Single"
+            )
+            utils.save_obj(
+                save_path1 + "/Single.pickle",
+                model="Single",
+                query_gt=query_gt,
+                proposals=proposals,
+                scores=scores,
+                times=times,
+            )
     return None
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run single image"
-                                     "matching on trials")
-    parser.add_argument('-r', '--reference-traverse', type=str,
-                        default='Overcast',
-                        help="reference traverse used as the map")
-    parser.add_argument('-q', '--query-traverses', nargs='+',
-                        type=str, default=['Sun', 'Dusk', 'Night'],
-                        help="Names of query traverses to localize"
-                        "against reference map e.g. Overcast, Night,"
-                        "Dusk etc. Input 'all' instead to process all"
-                        "traverses. See src/params.py for full list.")
-    parser.add_argument('-d', '--descriptors', nargs='+', type=str,
-                        default=['NetVLAD', 'DenseVLAD'],
-                        help='descriptor types to run experiments on.')
+    parser = argparse.ArgumentParser(description="Run single imagematching on trials")
+    parser.add_argument(
+        "-r",
+        "--reference-traverse",
+        type=str,
+        default="Overcast",
+        help="reference traverse used as the map",
+    )
+    parser.add_argument(
+        "-q",
+        "--query-traverses",
+        nargs="+",
+        type=str,
+        default=["Rain", "Dusk", "Night"],
+        help=(
+            "Names of query traverses to localize"
+            "against reference map e.g. Overcast, Night,"
+            "Dusk etc. Input 'all' instead to process all"
+            "traverses. See src/params.py for full list."
+        ),
+    )
+    parser.add_argument(
+        "-d",
+        "--descriptors",
+        nargs="+",
+        type=str,
+        default=["NetVLAD", "DenseVLAD"],
+        help="descriptor types to run experiments on.",
+    )
     args = parser.parse_args()
 
     main(args)
