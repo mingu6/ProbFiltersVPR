@@ -8,6 +8,9 @@ traverses = {
     "Night": "2014-12-16-18-44-24",
 }
 
+################### descriptors ######################
+descriptors = ["NetVLAD", "DenseVLAD"]
+
 ############## Initialization noise ##################
 
 sigma_init = np.array([2.0, 0.5, 0.5, 0.05, 0.05, 0.1])

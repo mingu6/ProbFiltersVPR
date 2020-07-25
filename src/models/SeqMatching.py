@@ -7,6 +7,7 @@ import numpy as np
 from tqdm import trange, tqdm
 
 from src import utils, geometry
+from src.params import descriptors
 
 
 class SeqMatching:
@@ -180,7 +181,7 @@ if __name__ == "__main__":
         "--descriptors",
         nargs="+",
         type=str,
-        default=["NetVLAD", "DenseVLAD"],
+        default=descriptors,
         help="descriptor types to run experiments on.",
     )
     parser.add_argument(

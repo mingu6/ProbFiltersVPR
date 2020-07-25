@@ -8,6 +8,7 @@ from tqdm import trange, tqdm
 import matplotlib.pyplot as plt
 
 from src import geometry, utils
+from src.params import descriptors
 
 
 class TopologicalFilter:
@@ -140,7 +141,7 @@ if __name__ == "__main__":
         "--descriptors",
         nargs="+",
         type=str,
-        default=["NetVLAD", "DenseVLAD"],
+        default=descriptors,
         help="descriptor types to run experiments on.",
     )
     parser.add_argument(

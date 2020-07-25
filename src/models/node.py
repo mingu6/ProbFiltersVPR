@@ -1,5 +1,3 @@
-
-
 class Node:
     def __init__(self, quId, refId, idvCost):
         self.quId = quId
@@ -12,8 +10,11 @@ class Node:
         self.idvCost = idvCost
 
     def print(self):
-        print("[INFO][Node] qu: {}; ref {}; cost: {:2.5f}".format(
-            self.qId, self.refId, self.idvCost))
+        print(
+            "[INFO][Node] qu: {}; ref {}; cost: {:2.5f}".format(
+                self.qId, self.refId, self.idvCost
+            )
+        )
 
 
 class NodeSet:
@@ -34,7 +35,7 @@ class NodeSet:
 
     def toVector(self):
         nodesVec = []
-        for quIds in self._nodes.items():
-            for node in quIds.items():
+        for quIds in self._nodes.values():
+            for node in quIds.values():
                 nodesVec.append(node)
         return nodesVec

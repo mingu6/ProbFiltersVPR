@@ -7,6 +7,7 @@ import numpy as np
 from tqdm import trange, tqdm
 
 from src import geometry, utils
+from src.params import descriptors
 
 
 class SingleImageMatching:
@@ -48,6 +49,7 @@ def main(args):
             proposals, scores, times, query_gt = utils.localize_traverses_matching(
                 model, query_poses, query_descriptors[desc], desc="Single"
             )
+            Trel = geometry.combine(proposals) / geometry.combine(query_gt)
             utils.save_obj(
                 save_path1 + "/Single.pickle",
                 model="Single",
@@ -86,7 +88,7 @@ if __name__ == "__main__":
         "--descriptors",
         nargs="+",
         type=str,
-        default=["NetVLAD", "DenseVLAD"],
+        default=descriptors,
         help="descriptor types to run experiments on.",
     )
     args = parser.parse_args()

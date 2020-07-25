@@ -164,6 +164,18 @@ def localize_traverses_matching(
     return proposals, scores, times, query_gts
 
 
+def localize_traverses_graph(model, query_poses, query_descriptors, desc=None):
+    nloc = len(query_descriptors)  # number of localizations
+    proposals, scores, times, query_gts = [], [], [], []
+    for i in trange(nloc, desc=desc, leave=False):
+        proposals_seq, scores_seq, times_seq = model.localize(query_descriptors[i])
+        proposals.append(proposals_seq)
+        scores.append(scores_seq)
+        times.append(times_seq)
+        model.reset()
+    return proposals, scores, times, query_poses
+
+
 def remove_far_queries(ref_tree, ref_poses, query_poses):
     # import matplotlib.pyplot as plt
     divergence = []
